@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
@@ -65,6 +66,8 @@ type storeNode struct {
 	proxyManager               ProxyManager
 	bindMounts                 []garden.BindMount
 	cellID                     string
+
+	destroying, stopping int32
 }
 
 func newStoreNode(
@@ -490,6 +493,11 @@ func (n *storeNode) run(logger lager.Logger) {
 }
 
 func (n *storeNode) Stop(logger lager.Logger) error {
+	if !atomic.CompareAndSwapInt32(&n.stopping, 0, 1) {
+		return nil
+	}
+	defer atomic.StoreInt32(&n.stopping, 0)
+
 	logger = logger.Session("node-stop")
 	n.acquireOpLock(logger)
 	defer n.releaseOpLock(logger)
@@ -517,6 +525,11 @@ func (n *storeNode) stop(logger lager.Logger) error {
 }
 
 func (n *storeNode) Destroy(logger lager.Logger) error {
+	if !atomic.CompareAndSwapInt32(&n.destroying, 0, 1) {
+		return nil
+	}
+	defer atomic.StoreInt32(&n.destroying, 0)
+
 	logger = logger.Session("node-destroy")
 	n.acquireOpLock(logger)
 	defer n.releaseOpLock(logger)
