@@ -86,7 +86,11 @@ var _ = Describe("Container Store", func() {
 	}
 
 	BeforeEach(func() {
+		// avoid race detector warnings
+		metricMapLock.Lock()
+		defer metricMapLock.Unlock()
 		metricMap = map[string]struct{}{}
+
 		gardenContainer = &gardenfakes.FakeContainer{}
 		gardenClient = &gardenfakes.FakeClient{}
 		dependencyManager = &containerstorefakes.FakeDependencyManager{}
@@ -1900,8 +1904,11 @@ var _ = Describe("Container Store", func() {
 
 		BeforeEach(func() {
 			blockCh = make(chan struct{})
+
+			// avoid race detector warnings
+			ch := blockCh
 			gardenClient.CreateStub = func(garden.ContainerSpec) (garden.Container, error) {
-				<-blockCh
+				<-ch
 				return &gardenfakes.FakeContainer{}, nil
 			}
 		})
