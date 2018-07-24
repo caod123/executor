@@ -532,6 +532,10 @@ var _ = Describe("CredManager", func() {
 						Expect(cert.ExtKeyUsage).To(ContainElement(x509.ExtKeyUsageServerAuth))
 						Expect(cert.KeyUsage).To(Equal(x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement))
 					})
+					// deleting the directory this early can cause failures on windows 1803, see #156406881
+					It("does not remove container credentials from the filesystem", func() {
+						Consistently(certMount[0].SrcPath).Should(BeADirectory())
+					})
 
 					It("signed by the rep intermediate CA", func() {
 						CaCertPool := x509.NewCertPool()
